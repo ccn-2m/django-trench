@@ -8,7 +8,7 @@ from trench.command.create_otp import create_otp_command
 from trench.exceptions import MissingConfigurationError
 from trench.models import MFAMethod
 from trench.responses import DispatchResponse
-from trench.settings import SOURCE_FIELD, VALIDITY_PERIOD, trench_settings
+from trench.settings import SOURCE_FIELD, VALIDITY_PERIOD, VALID_WINDOW, trench_settings
 
 
 class AbstractMessageDispatcher(ABC):
@@ -73,15 +73,20 @@ class AbstractMessageDispatcher(ABC):
         return self.validate_code(code)
 
     def validate_code(self, code: str) -> bool:
-        return self._get_otp().verify(otp=code)
+        return self._get_otp().verify(otp=code, valid_window=self._get_valid_window())
 
     def _get_otp(self) -> TOTP:
         return create_otp_command(
             secret=self._mfa_method.secret,
-            interval=self._get_valid_window()
+            interval=self._get_validity_period()
+        )
+
+    def _get_validity_period(self) -> int:
+        return self._config.get(
+            VALIDITY_PERIOD, trench_settings.DEFAULT_VALIDITY_PERIOD
         )
 
     def _get_valid_window(self) -> int:
         return self._config.get(
-            VALIDITY_PERIOD, trench_settings.DEFAULT_VALIDITY_PERIOD
+            VALID_WINDOW, trench_settings.DEFAULT_VALID_WINDOW
         )
